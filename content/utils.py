@@ -35,7 +35,9 @@ class micro_params_2tcm:
         return (self.K1 / self.k2) * (1 + (self.k3 / self.k4))
 
 
-def resp_funcs_2tcm(mirco_params: micro_params_2tcm, aif_params: poly_exp_aif_params):
+def resp_funcs_2tcm(
+    mirco_params: micro_params_2tcm, aif_params: poly_exp_aif_params, verbose=False
+):
 
     AIF_amps = aif_params.AIF_amps
     AIF_exps = aif_params.AIF_exps
@@ -100,7 +102,8 @@ def resp_funcs_2tcm(mirco_params: micro_params_2tcm, aif_params: poly_exp_aif_pa
     resp1_func = sympify(resp1_str)
     # resp1_func_numeric = lambdify(t, resp1_func, modules=["numpy"])
 
-    print(f"response of the 1st TC C1(t) : {resp1_func}")
+    if verbose:
+        print(f"response of the 1st TC C1(t) : {resp1_func}")
 
     # calculate the response of the 2nd compartment
     if k3 != 0:
@@ -124,8 +127,9 @@ def resp_funcs_2tcm(mirco_params: micro_params_2tcm, aif_params: poly_exp_aif_pa
         resp_func = resp1_func + resp2_func
         # resp_func_numeric = lambdify(t, resp_func, modules=["numpy"])
 
-        print(f"response of the 2nd TC C2(t) : {resp2_func}")
-        print(f"response of the C1(t) + C2(t): {resp_func}")
+        if verbose:
+            print(f"response of the 2nd TC C2(t) : {resp2_func}")
+            print(f"response of the C1(t) + C2(t): {resp_func}")
     else:
         resp2_func = sympify("0")
         resp_func = resp1_func
