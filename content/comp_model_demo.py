@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import linregress
 
 from sympy import symbols, lambdify, integrate
+import argparse
 from utils import (
     create_aif_func,
     poly_exp_aif_params,
@@ -11,20 +12,47 @@ from utils import (
 )
 
 # %%
-aif_type = "bolus"
+parser = argparse.ArgumentParser(description="Kinetic modeling demo")
+parser.add_argument(
+    "--aif", type=int, default=1, help="AIF type (1-3)", choices=[1, 2, 3]
+)
+parser.add_argument(
+    "--params",
+    type=int,
+    default=1,
+    help="Micro parameter type (1-2)",
+    choices=[1, 2],
+)
+parser.add_argument("--tmax", type=float, default=90.0, help="Maximum time (min)")
+parser.add_argument("--num_frames", type=int, default=35, help="Number of frames")
+parser.add_argument(
+    "--num_logan", type=int, default=4, help="Number of Logan plot points"
+)
 
-if aif_type == "bolus":
-    aif_params = poly_exp_aif_params(AIF_amps=[-3.0, 2.0, 1.0], AIF_exps=[4, 1, 0.01])
-elif aif_type == "infusion":
+args = parser.parse_args()
+
+aif_type = args.aif
+micro_param_type = args.params
+tmax = args.tmax
+num_frames = args.num_frames
+n_logan = args.num_logan
+
+# %%
+if aif_type == 1:
+    aif_params = poly_exp_aif_params(AIF_amps=[-6.0, 5.0, 1.0], AIF_exps=[4, 1, 0.02])
+elif aif_type == 2:
+    aif_params = poly_exp_aif_params(AIF_amps=[-10, 9.5, 0.5], AIF_exps=[4, 1, 0])
+elif aif_type == 3:
     aif_params = poly_exp_aif_params(AIF_amps=[-2, 1.5, 0.5], AIF_exps=[40, 40, 0])
-elif aif_type == "bolus_infusion":
-    aif_params = poly_exp_aif_params(AIF_amps=[-25, 24.5, 0.5], AIF_exps=[4, 1, 0])
+else:
+    raise ValueError("Invalid aif_type")
 
-micro_params = micro_params_2tcm(K1=0.3, k2=0.3, k3=0.3, k4=0.15)
-
-tmax = 120.0
-num_frames = 35
-n_logan = 4
+if micro_param_type == 1:
+    micro_params = micro_params_2tcm(K1=0.4, k2=0.2, k3=0.14, k4=0.07)
+elif micro_param_type == 2:
+    micro_params = micro_params_2tcm(K1=0.2, k2=0.2, k3=0.05, k4=0.1)
+else:
+    raise ValueError("Invalid micro_param_type")
 
 # %%
 aif_func = create_aif_func(aif_params)
@@ -66,19 +94,33 @@ logan_t_frm = logan_t_func_numeric(t_frm)
 slope, intercept, r_value, p_value, std_err = linregress(
     logan_t_frm[-n_logan:], logan_y_frm[-n_logan:]
 )
-print(f"Logan plot slope: {slope:.4f}, intercept: {intercept:.4f}, R^2")
-print(micro_params.Vt)
+print(f"Logan plot slope: {slope:.4f}, true Vt: {micro_params.Vt:.4f}")
+
+# %%
+# sample the AIF and response at the frame times
+CT_frm = resp_numeric(t_frm)
+aif_frm = aif_numeric(t_frm)
+
+# save to single csv file using np.savetxt
+data = np.column_stack((t_frm, aif_frm, CT_frm))
+np.savetxt(
+    f"TACs_sub_{aif_type}_region_{micro_param_type}.csv",
+    data,
+    delimiter=",",
+    header="time[min],arterial input function Ca[kBq/ml], tissue activity concentration C[kBq/ml]",
+    comments="",
+)
 
 # %%
 fig, ax = plt.subplots(1, 3, figsize=(12, 4), layout="constrained")
-ax[0].plot(t_values, aif_numeric(t_values), "k-", label="AIF")
-ax[0].plot(t_values, resp_numeric(t_values), "r-", label="C1+C2")
+ax[0].plot(t_values, aif_numeric(t_values), "k-", label="Ca")
+ax[0].plot(t_values, resp_numeric(t_values), "r-", label="C")
 ax[0].plot(t_values, resp1_numeric(t_values), "b--", label="C1")
 ax[0].plot(t_values, resp2_numeric(t_values), "g--", label="C2")
-ax[0].plot(t_frm, aif_numeric(t_frm), "ko")
-ax[0].plot(t_frm, resp_numeric(t_frm), "ro")
+ax[0].plot(t_frm, aif_frm, "ko")
+ax[0].plot(t_frm, CT_frm, "ro")
 ax[0].set_xlabel("t (min)")
-ax[0].set_ylabel("Ca(t)")
+ax[0].set_ylabel("C(t)")
 ax[0].grid(ls=":")
 ax[0].legend()
 
@@ -96,4 +138,5 @@ ax[2].grid(ls=":")
 ax[2].set_xlabel("Logan time")
 ax[2].set_ylabel("Logan y")
 ax[2].set_title("Logan plot")
+fig.savefig(f"comp_model_demo_sub_{aif_type}_region_{micro_param_type}.pdf")
 fig.show()
