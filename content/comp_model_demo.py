@@ -20,8 +20,8 @@ parser.add_argument(
     "--params",
     type=int,
     default=1,
-    help="Micro parameter type (1-2)",
-    choices=[1, 2],
+    help="Micro parameter type (1-6)",
+    choices=[1, 2, 3, 4, 5, 6],
 )
 parser.add_argument("--tmax", type=float, default=90.0, help="Maximum time (min)")
 parser.add_argument("--num_frames", type=int, default=35, help="Number of frames")
@@ -51,6 +51,14 @@ if micro_param_type == 1:
     micro_params = micro_params_2tcm(K1=0.4, k2=0.2, k3=0.14, k4=0.07)
 elif micro_param_type == 2:
     micro_params = micro_params_2tcm(K1=0.2, k2=0.2, k3=0.05, k4=0.1)
+elif micro_param_type == 3:
+    micro_params = micro_params_2tcm(K1=0.3, k2=0.3, k3=0.12, k4=0.06)
+elif micro_param_type == 4:
+    micro_params = micro_params_2tcm(K1=0.1, k2=0.1, k3=0.025, k4=0.1)
+elif micro_param_type == 5:
+    micro_params = micro_params_2tcm(K1=0.6, k2=0.3, k3=0.18, k4=0.06)
+elif micro_param_type == 6:
+    micro_params = micro_params_2tcm(K1=0.2, k2=0.4, k3=0.05, k4=0.1)
 else:
     raise ValueError("Invalid micro_param_type")
 
@@ -104,7 +112,7 @@ aif_frm = aif_numeric(t_frm)
 # save to single csv file using np.savetxt
 data = np.column_stack((t_frm, aif_frm, CT_frm))
 np.savetxt(
-    f"TACs_sub_{aif_type}_region_{micro_param_type}.csv",
+    f"TACs_sub_{aif_type}_region_{micro_param_type // aif_type}.csv",
     data,
     delimiter=",",
     header="time[min],arterial input function Ca[kBq/ml], tissue activity concentration C[kBq/ml]",
@@ -138,5 +146,5 @@ ax[2].grid(ls=":")
 ax[2].set_xlabel("Logan time")
 ax[2].set_ylabel("Logan y")
 ax[2].set_title("Logan plot")
-fig.savefig(f"comp_model_demo_sub_{aif_type}_region_{micro_param_type}.pdf")
+fig.savefig(f"comp_model_demo_sub_{aif_type}_region_{micro_param_type // aif_type}.pdf")
 fig.show()
